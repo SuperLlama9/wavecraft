@@ -1,0 +1,20 @@
+{
+  "name": "wavecraft",
+  "version": "0.1.0",
+  "description": "Spec-driven agentic engineering framework. 8 skills covering the full lifecycle from research through deployment — planning, specification, implementation, QA, and session continuity. Works in both Cowork and Claude Code.",
+  "author": {
+    "name": "Timothy Becker"
+  },
+  "repository": "https://github.com/SuperLlama9/wavecraft",
+  "license": "MIT",
+  "keywords": [
+    "agentic-engineering",
+    "spec-driven",
+    "tdd",
+    "development-workflow",
+    "project-setup",
+    "session-continuity",
+    "feature-specs",
+    "code-review"
+  ]
+}
