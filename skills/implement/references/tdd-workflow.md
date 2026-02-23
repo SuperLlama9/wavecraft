@@ -85,6 +85,53 @@ def test_member_cannot_delete_organization():
 
 Coverage is a floor, not a ceiling. If a critical path needs 100% coverage, write the tests.
 
+## Accessibility in TDD (UI Features)
+
+If the spec has an Accessibility section, write a11y tests during the Red phase alongside functional tests. These are behavior tests — they verify that the UI is usable, not just visible.
+
+**What to test:**
+
+```
+Accessibility tests per AC:
+├── Keyboard operability — interactive elements reachable via Tab, activatable via Enter/Space
+├── ARIA attributes — roles, labels, and states on custom components
+├── Focus management — focus moves correctly after modal open, form submit, route change
+├── Error announcement — validation errors are linked to inputs (aria-describedby)
+└── Semantic structure — headings, landmarks, lists used appropriately
+```
+
+**Example tests:**
+
+```javascript
+// React Testing Library + jest-dom
+it('should be keyboard operable', () => {
+  render(<OrganizationForm />);
+  const submitBtn = screen.getByRole('button', { name: /create/i });
+  submitBtn.focus();
+  expect(submitBtn).toHaveFocus();
+  fireEvent.keyDown(submitBtn, { key: 'Enter' });
+  // assert form submits
+});
+
+it('should announce validation errors to screen readers', () => {
+  render(<OrganizationForm />);
+  fireEvent.click(screen.getByRole('button', { name: /create/i }));
+  const errorMsg = screen.getByText(/name is required/i);
+  expect(errorMsg).toHaveAttribute('id');
+  const input = screen.getByRole('textbox', { name: /name/i });
+  expect(input).toHaveAttribute('aria-describedby', errorMsg.id);
+});
+
+it('should trap focus inside modal when open', () => {
+  render(<DeleteConfirmModal open={true} />);
+  const modal = screen.getByRole('dialog');
+  expect(modal).toBeInTheDocument();
+  expect(document.activeElement).toBe(within(modal).getAllByRole('button')[0]);
+});
+```
+
+**When to skip:** Backend-only tasks, API-only features, or when the spec's Accessibility section says "N/A."
+
 ## Common TDD Mistakes with AI
 
 **Mistake: Writing tests after implementation.**

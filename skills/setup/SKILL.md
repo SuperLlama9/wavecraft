@@ -94,7 +94,15 @@ Structure (adapt section names to the project's stack):
 
 ## Critical Rules
 [3-5 NEVER/ALWAYS rules specific to this project]
+
+## Model Profiles
+[Which model for which activity — e.g., Opus for planning/architecture, Sonnet for implementation, Haiku for research/quick lookups]
+
+## Context Budget
+[Max context per session, when to compact, when to split into waves — e.g., "Compact at ~40 tool calls, new session at ~60. One feature per session."]
 ```
+
+**Model Profiles and Context Budget** are part of CLAUDE.md because they're project-level configuration that every session needs. Keep each section to 2-3 lines — these are reference values, not documentation.
 
 Read `references/claude-md-guide.md` for detailed guidance on writing effective CLAUDE.md files.
 

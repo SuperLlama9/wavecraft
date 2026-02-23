@@ -178,6 +178,7 @@ Write the minimum code necessary to make the failing tests pass:
 - Proper error handling on all code paths
 - Input validation on all API endpoints
 - Authorization checks (policies/gates) where spec requires
+- **Accessibility (if UI task):** Use semantic HTML elements (`<button>`, `<nav>`, `<main>`, not `<div onClick>`). Add ARIA labels to icons and buttons without visible text. Ensure keyboard operability (no mouse-only interactions). Manage focus after state changes (modal open/close, route change, form submit). Reference the spec's Accessibility section for feature-specific requirements.
 
 ### Step 11: For Each Task — Verify
 
@@ -242,7 +243,8 @@ Update these sections:
 3. Click through the happy path as the primary user role from the spec
 4. Verify it renders correctly
 5. Test one error path
-6. Capture screenshots
+6. Quick a11y check: Tab through the feature — can you reach all interactive elements? Are focus states visible?
+7. Capture screenshots
 
 **For backend-only features:**
 Call the API endpoints with real HTTP requests (curl, httpie, or API client). Validate response shapes against the spec's API endpoint definitions.
