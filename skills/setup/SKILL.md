@@ -113,6 +113,7 @@ Create rule files based on the project's stack. Each rule file focuses on one co
 **Always create:**
 - `testing.md` — TDD workflow, test patterns, coverage requirements
 - `security.md` — Auth checks, input validation, secrets handling
+- `plan-completeness.md` — Ensures implementation plans cover all spec sections before execution
 
 **Create if applicable:**
 - `api-conventions.md` — REST/GraphQL patterns, response format, error handling

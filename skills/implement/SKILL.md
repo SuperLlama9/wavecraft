@@ -117,6 +117,28 @@ Break the spec into ordered tasks using the XML task format. Every task must hav
 
 **Show the plan to the user.** Get confirmation before starting implementation.
 
+### Step 6b: Plan Completeness Gate (MANDATORY)
+
+Before presenting the plan, verify it covers every section of the feature spec. Check each section that exists in the spec:
+
+| Spec Section | Required Plan Coverage |
+|---|---|
+| Data Model | Migration + model + factory tasks |
+| API Endpoints | Controller + route + form request tasks |
+| UI Components | Frontend component + page tasks |
+| Accessibility | Accessibility verification task (keyboard nav, ARIA, focus management) |
+| OpenAPI / API docs | openapi.yaml update task (if API endpoints were added) |
+| Browser Validation | Playwright or manual smoke test task (if UI components exist) |
+
+**If any spec section has no corresponding tasks:**
+1. Add the missing tasks to the plan
+2. Re-count total tasks
+3. If total > 10, propose wave splitting to the user (Step 8 will handle this, but flag it now)
+
+**NEVER present a plan that silently omits spec sections.** If you believe a section should be deferred (e.g., "build backend first, frontend later"), say so explicitly in the plan and get user approval. The user decides what to build now vs. later — not you.
+
+**Why this exists:** Field-tested during F023 implementation. Claude presented a 10-task backend-only plan for a spec that included UI components, accessibility, and frontend sections. The user only discovered the omission after backend was complete. The skill's Step 8 (wave strategy) couldn't trigger because the full task count was never calculated.
+
 ### Step 7: Validate Nyquist Rule
 
 Review every task's `<verify>` step:

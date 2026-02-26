@@ -43,6 +43,32 @@ Adapt the test runner and patterns to the project's stack.
 - Third-party library behavior
 ```
 
+## plan-completeness.md — Always Create This
+
+```markdown
+# Plan Completeness Gate
+
+## Before Presenting Any Implementation Plan
+
+Verify the plan covers EVERY section of the feature spec:
+
+| Spec Section | Required Plan Coverage |
+|---|---|
+| Data Model | Migration + model + factory tasks |
+| API Endpoints | Controller + route + form request tasks |
+| UI Components | Frontend component + page tasks |
+| Accessibility | a11y verification task (keyboard nav, ARIA, focus) |
+| OpenAPI / API docs | openapi.yaml update task (if API endpoints added) |
+| Browser Validation | Playwright smoke test task (if UI components added) |
+
+## Rules
+
+1. **Count all tasks first.** If >10, propose wave splitting before proceeding.
+2. **Never silently omit spec sections.** If you plan to skip a section (e.g., "frontend later"), say so explicitly and get user approval.
+3. **The user decides scope — not you.** Present the full picture, let them choose what to build now vs. later.
+4. **After each wave, state what's pending.** Example: "Backend complete. Remaining: frontend (tasks 11-18), browser validation, OpenAPI update."
+```
+
 ## security.md — Always Create This
 
 ```markdown
