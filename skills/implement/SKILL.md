@@ -320,7 +320,28 @@ This catches boundary bugs before they accumulate. 30 minutes of integration tes
 - Self-referencing FKs fail in PostgreSQL `Schema::create()` but work in SQLite
 - JSON operators differ between engines
 
-### Step 16: Update openapi.yaml
+### Step 16: Validate API Contracts (Frontend Waves)
+
+When building frontend API layers (TypeScript interfaces + fetch functions that call backend endpoints), verify the contracts match reality BEFORE building UI components on top of them.
+
+```
+1. Ensure the backend is running (Docker, local server, etc.)
+2. For each new API module (e.g., vendors.ts, comments.ts):
+   a. Call at least one endpoint with a real HTTP request
+   b. Compare the actual JSON response against your TypeScript interface
+   c. Flag any mismatch BEFORE building UI components
+3. Pay special attention to:
+   - Fields that might be null/undefined vs always present
+   - Array fields that might be omitted vs empty arrays
+   - Nested objects that might have different shapes on list vs detail endpoints
+   - Date formats (ISO 8601 string vs Unix timestamp)
+```
+
+**Why this matters:** Building an entire UI on wrong type assumptions is the most expensive frontend bug. Field-tested: a dashboard crash (`p.evaluations.length`) happened because the list endpoint omits `evaluations` but the TypeScript type assumed it was always present. One real API call per module would have caught this in 30 seconds.
+
+**If the project uses OpenAPI:** Validate against `docs/api/openapi.yaml` instead of manual calls. Better yet, generate TypeScript types from the OpenAPI spec automatically.
+
+### Step 17: Update openapi.yaml
 
 If any API endpoints were added or changed during implementation:
 
@@ -331,7 +352,7 @@ If any API endpoints were added or changed during implementation:
 
 If the project doesn't use OpenAPI, skip this step.
 
-### Step 17: At Session End — Update DEV-LOG.md
+### Step 18: At Session End — Update DEV-LOG.md
 
 Append a session summary to DEV-LOG.md:
 
@@ -347,7 +368,7 @@ Append a session summary to DEV-LOG.md:
 **Next:** [one-line pointer to next steps]
 ```
 
-### Step 18: At Session End — Final SESSION-LOG.md Update
+### Step 19: At Session End — Final SESSION-LOG.md Update
 
 Write the complete session state including:
 - All completed tasks
@@ -404,7 +425,26 @@ Claude cannot directly read its token count (no context-awareness API). These th
 
 **Large feature (>10 tasks):** Use wave-based execution. Each wave gets fresh context. SESSION-LOG.md is the bridge between waves.
 
-**Enhancement to existing module:** When adding to an already-built module (not greenfield), the full Step 2-5 spec ceremony may be overkill. Read the existing code first, understand what's there, then create a lighter task plan focused on the delta. The XML task format still applies, but tasks like "create migration" and "create model" become "add command to existing module" or "fix search behavior." The TDD and verification steps apply equally — existing code doesn't mean less rigor.
+**Enhancement to existing module (not greenfield):** Use this decision flowchart to determine ceremony level:
+
+```
+Is there a feature spec for this work?
+├── YES → Full workflow (Steps 2-19)
+└── NO → Is it a bug fix, small addition, or behavior change?
+    ├── Bug fix → Skip Steps 2-5. Read existing code + tests.
+    │   Write a failing test that reproduces the bug (Step 9).
+    │   Fix it (Step 10). Verify (Step 11). Commit (Step 13).
+    ├── Small addition (new command, new endpoint, new component)
+    │   → Skip Steps 2-3. Read existing code (Step 4 lite).
+    │   Create a task plan with 1-5 tasks (Step 6).
+    │   Full TDD + verify + commit cycle (Steps 9-14).
+    └── Behavior change (fix search, change validation, update types)
+        → Skip Steps 2-3. Read existing code + tests.
+        Update existing tests to reflect new behavior (Step 9).
+        Implement the change (Step 10). Verify (Step 11). Commit (Step 13).
+```
+
+**The rule:** Skip the spec ceremony, never skip verification. Enhancement mode means lighter planning, not lighter testing. Browser validation (Step 15) and integration checkpoints (Step 15b) apply equally.
 
 ## Reference Files
 

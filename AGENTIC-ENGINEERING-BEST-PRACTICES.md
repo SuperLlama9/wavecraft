@@ -1253,7 +1253,22 @@ name: CI
 on: [push, pull_request]
 
 jobs:
-  backend-tests:
+  # Gate 1: Unit tests on fast database (SQLite) for quick feedback
+  backend-tests-fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+      - run: cd backend && composer install
+      - run: cd backend && php artisan test --coverage-min=85
+
+  # Gate 2b: Database parity — same tests, real database engine
+  # This catches LIKE/ILIKE, FK enforcement, JSON operator, and column
+  # length differences that SQLite silently ignores.
+  backend-tests-pgsql:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -1262,15 +1277,38 @@ jobs:
           POSTGRES_DB: testing
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_DATABASE: testing
+      DB_USERNAME: test
+      DB_PASSWORD: test
     steps:
       - uses: actions/checkout@v4
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
       - run: cd backend && composer install
-      - run: cd backend && php artisan test --coverage-min=85
+      - run: cd backend && php artisan migrate --force
+      - run: cd backend && php artisan test
 
+  # Frontend unit tests
+  frontend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd frontend && npm ci
+      - run: cd frontend && npx vitest run --coverage
+
+  # Frontend lint + build
   frontend-lint:
     runs-on: ubuntu-latest
     steps:
@@ -1278,7 +1316,47 @@ jobs:
       - run: cd frontend && npm ci
       - run: cd frontend && npm run lint
       - run: cd frontend && npm run build
+
+  # Contract validation: verify frontend TypeScript types match real API responses
+  # This runs the backend, hits real endpoints, and validates response shapes.
+  contract-check:
+    runs-on: ubuntu-latest
+    needs: [backend-tests-pgsql]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: testing
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+      - run: cd backend && composer install
+      - run: cd backend && php artisan migrate --seed --force
+      - name: Start backend
+        run: cd backend && php artisan serve --port=8000 &
+      - name: Wait for backend
+        run: sleep 3 && curl -f http://localhost:8000/api/v1/health || exit 1
+      - name: Validate API contracts
+        run: |
+          # Hit key endpoints, save responses, validate against expected shapes
+          # This replaces fragile "read PHP code and guess the TypeScript type" approach
+          cd frontend && node scripts/validate-contracts.js
 ```
+
+**Why both `backend-tests-fast` AND `backend-tests-pgsql`?** Fast feedback (SQLite, ~10s) catches logic bugs immediately. Parity testing (PostgreSQL, ~30s) catches boundary bugs. Running both in parallel gives you speed AND correctness. Field-tested: 5 of 8 integration bugs in a 22-feature build were database parity issues that passed SQLite tests.
+
+**Why `contract-check`?** Frontend TypeScript types built by reading backend controller code are fragile. Field-tested: `p.evaluations.length` crashed because the API omits `evaluations` on list endpoints, but the TypeScript type assumed it was always present. The contract check hits real endpoints and validates response shapes match what the frontend expects.
 
 ---
 

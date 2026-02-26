@@ -62,6 +62,8 @@ Sources of truth for what was accomplished:
 - Test results (if tests were run)
 - The conversation history itself
 
+**Track efficiency signals as you gather accomplishments.** Count tasks completed, tests added, commits made, and approximate tool calls used. Note what consumed the most time (debugging, refactoring, environment issues, context resets). These metrics in SESSION-LOG.md help identify workflow improvements over time — e.g., "backend sessions average 6 tasks in 30 tool calls; frontend sessions average 4 tasks in 45 tool calls due to browser validation overhead."
+
 ### Step 3: Document Decisions
 
 Capture every non-trivial decision made during the session with its rationale:
@@ -165,6 +167,14 @@ Overwrite SESSION-LOG.md with the current state. Use all sections — every sect
 - Database engine used in tests vs production: [e.g., SQLite tests / PostgreSQL production]
 - Known boundary gaps: [untested boundaries — e.g., "frontend API types not verified against real responses"]
 - Recommendation: [boot check needed / integration test needed / stack verified]
+
+## Session Efficiency
+- Tasks completed: [N completed / M planned]
+- Tests added: [count]
+- Commits: [count]
+- Subagents spawned: [count, or "none"]
+- Context resets: [count, or "none" — compacts and session continuations]
+- Biggest time sink: [what took longest and why — helps identify workflow improvements]
 ```
 
 ### Step 8: Append to DEV-LOG.md
@@ -178,6 +188,7 @@ DEV-LOG.md is the cumulative history — it's appended to, never overwritten. Ad
 **Accomplished:** [2-3 bullet summary]
 **Decisions:** [key decisions, brief]
 **Status:** [in-progress / completed / blocked]
+**Efficiency:** [tasks completed, tests added, commits, tool calls — e.g., "5/8 tasks, 16 tests, 4 commits, ~35 tool calls"]
 **Next:** [one-line pointer to next steps]
 ```
 
