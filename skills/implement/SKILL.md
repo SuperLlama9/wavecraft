@@ -128,6 +128,21 @@ Review every task's `<verify>` step:
 | Verify is automated (not manual) | ✅ | Write an automated check or add a test |
 | Verify tests the right thing | ✅ | Ensure it tests the task's `<done>` criteria |
 
+### Step 7b: Verify Stack Boots (First Session Only)
+
+Before writing any code in the first implementation session on a project, verify the real stack works:
+
+```
+1. Start the application stack (docker compose up, or equivalent)
+2. Backend responds to a health check or root endpoint
+3. Database migrations run successfully against the REAL database (not SQLite)
+4. Frontend dev server starts and renders a page
+```
+
+If the stack doesn't boot, fix it before starting implementation. This is not optional. Every bug found during stack boot is 10x cheaper to fix now than after 5 features.
+
+**Why this exists:** Field-tested across 19 features. All boundary bugs (self-referencing FK failures, email verification crashes, migration ordering issues) would have been caught on day one if the real stack had been booted first.
+
 ### Step 8: Assess Wave Strategy
 
 Count the tasks in the plan:
@@ -140,9 +155,11 @@ Count the tasks in the plan:
 
 **Wave execution:** Each wave runs with fresh context. Between waves, update SESSION-LOG.md with everything completed so far. The next wave reads SESSION-LOG.md + the spec + git history — not the previous wave's full conversation.
 
-### Step 9: For Each Task — Write Tests FIRST (TDD Red Phase)
+### Step 9: For Each Task — Write Tests (TDD, with UI Nuance)
 
-Before writing any implementation code, write the tests that define correct behavior:
+The testing approach depends on the type of code being written:
+
+**For logic-heavy code (API endpoints, services, validators, models):** Write tests FIRST (strict TDD).
 
 ```
 For each acceptance criterion covered by this task:
@@ -151,12 +168,36 @@ For each acceptance criterion covered by this task:
 3. If the test passes without implementation, the test is wrong — fix it
 ```
 
-**What to test:**
+**For complex multi-component UI (pages with multiple child components, tab layouts, data grids):** Implementation-first, then characterization tests.
+
+```
+1. Build the component(s)
+2. Write tests that verify the actual rendering behavior
+3. Run the tests → they must PASS
+4. Verify tests actually fail when the component is removed (proves test validity)
+```
+
+**Why the distinction:** Strict test-first for UI requires predicting DOM structure, component library rendering behavior, and text splitting across elements — things you can't know until you build. Field-tested across 200+ frontend tests: complex UI tests written first required 30-50% rewriting after implementation. Tests written after implementation caught the same bugs with less churn. For simple UI (a button, a form field), test-first still works fine. The dividing line: if you need `getAllByText` or `findByRole` with complex matchers, you're in characterization-test territory.
+
+**What to test (both approaches):**
 - Happy path (the thing works as expected)
 - Error cases from the spec's error handling ACs
 - Edge cases from the spec's edge case ACs
 - Authorization (correct role can do the thing, wrong role gets 403)
 - Validation (invalid input gets proper error messages)
+
+**Factory boundary values:** When writing factories, include at least one state that tests column limits and edge-case data. Factories that only generate "nice" short strings miss truncation bugs, encoding issues, and constraint violations that real data triggers.
+
+```php
+// Bad: factory only generates happy-path data
+'target_market' => fake()->word(),
+
+// Good: factory has a boundary state
+->state('long_fields', fn () => [
+    'target_market' => str_repeat('x', 50),  // VARCHAR(50) boundary
+    'description' => str_repeat('Long text. ', 500), // TEXT boundary
+])
+```
 
 **Test naming convention:** Follow the project's convention from `.claude/rules/testing.md`. If no convention exists, use descriptive names: `test_user_can_create_organization_with_valid_data`
 
@@ -222,38 +263,62 @@ git commit -m "feat(module): description (task N/M)"
 - `scope`: module or feature name
 - `N/M`: task number / total tasks (e.g., "task 3/8")
 
-Do not batch commits. Do not skip commits. Every task = one commit. This gives you `git bisect` for free and makes every change independently revertable.
+**Default:** One task = one commit. This gives you `git bisect` for free and makes every change independently revertable.
 
-### Step 14: Update SESSION-LOG.md (After Each Task)
+**Exception for tightly coupled tasks:** Tasks that form a single logical unit (e.g., a page component + its child tab components, or a model + its factory + its migration) can be committed together if they share a verification step and would be meaningless in isolation. Use `(tasks N-M/total)` in the commit message. Do not group more than 3 tasks per commit.
+
+### Step 14: Update SESSION-LOG.md (After Each Task + Before Browser Validation)
 
 Update SESSION-LOG.md **after each completed task**, not just at the end of the session. This is the safety net — if the session crashes or context gets too large, no progress is lost.
+
+**Critical: Always update SESSION-LOG.md BEFORE starting browser validation (Step 15).** Playwright/browser testing generates 10-20 tool calls and is the highest-risk phase for context exhaustion. If context resets during browser validation, all progress since the last SESSION-LOG update is lost.
 
 Update these sections:
 - "Completed This Session" — add the just-finished task
 - "In Progress" — update to the next task
 - "Files Modified" — add files changed in this task
 
-### Step 15: Browser Validation — Smoke Test (If UI Feature)
+### Step 15: Browser Validation — Smoke Test (Mandatory)
 
-**This is a developer smoke test during implementation** — quick verification that things render and work. (Full QA validation happens in `wavecraft:review`.)
+**This is a developer smoke test during implementation** — quick verification that things render and work. (Full QA validation happens in `wavecraft:review`.) This step is NOT optional. Passing tests ≠ working software.
+
+**Why this is mandatory:** Field-tested across 25+ implementation waves. Browser validation caught bugs that passed 100% of unit/integration tests: case-sensitive search on PostgreSQL (tests used SQLite), response shape mismatches between backend and frontend, rendering issues from component library behavior, and data truncation from real-world values exceeding column limits. Every one of these shipped "green" in the test suite.
 
 **For UI features:**
 1. Launch the app (or confirm it's running)
 2. Navigate to the feature
 3. Click through the happy path as the primary user role from the spec
 4. Verify it renders correctly
-5. Test one error path
+5. Test one error path (e.g., search for something that doesn't exist)
 6. Quick a11y check: Tab through the feature — can you reach all interactive elements? Are focus states visible?
 7. Capture screenshots
 
 **For backend-only features:**
-Call the API endpoints with real HTTP requests (curl, httpie, or API client). Validate response shapes against the spec's API endpoint definitions.
+Call the API endpoints with real HTTP requests (curl, httpie, or API client). Validate response shapes against the spec's API endpoint definitions. Test against the REAL database, not the test database — this catches operator differences (LIKE vs ILIKE), constraint violations, and data type mismatches.
 
-**Fallback chain:**
-1. **Preferred:** Playwright MCP or Chrome Extension (automated browser interaction)
-2. **If unavailable:** Output a manual verification checklist and ask the user to confirm each item
+**If browser automation (Playwright MCP, Chrome Extension) is available:** Use it. This is the preferred path.
 
-The `:setup` skill should have verified browser automation availability during project setup. If it wasn't checked, note it as a gap.
+**If browser automation is NOT available:** Pause and ask the user to verify manually before committing. Do NOT just "output a checklist" — that's a non-action disguised as an action. The user must confirm they've seen the feature working.
+
+### Step 15b: Integration Checkpoint (Every 2 Waves)
+
+After every 2nd implementation wave, or when switching layers (backend → frontend, or vice versa):
+
+```
+1. Boot the real stack (Docker + frontend dev server)
+2. Hit at least 3 endpoints with real HTTP requests
+3. Verify one happy path in the browser (if UI exists)
+4. Run tests against the real database at least once
+```
+
+This catches boundary bugs before they accumulate. 30 minutes of integration testing after 2 waves is cheaper than a full debugging session after 6 waves.
+
+**Database parity rule:** If your test suite runs against a different database engine than production (e.g., SQLite for tests, PostgreSQL for production), you MUST run the full suite against the real engine at least once per wave. Common differences that bite:
+- `LIKE` is case-insensitive on SQLite, case-sensitive on PostgreSQL (use `ILIKE`)
+- SQLite ignores FK constraints by default
+- `information_schema` queries fail on SQLite
+- Self-referencing FKs fail in PostgreSQL `Schema::create()` but work in SQLite
+- JSON operators differ between engines
 
 ### Step 16: Update openapi.yaml
 
@@ -338,6 +403,8 @@ Claude cannot directly read its token count (no context-awareness API). These th
 **Process automation (Scenario D):** Replace "API endpoints" with "integration points." Replace "browser validation" with "process execution validation" (trigger the process, verify the output).
 
 **Large feature (>10 tasks):** Use wave-based execution. Each wave gets fresh context. SESSION-LOG.md is the bridge between waves.
+
+**Enhancement to existing module:** When adding to an already-built module (not greenfield), the full Step 2-5 spec ceremony may be overkill. Read the existing code first, understand what's there, then create a lighter task plan focused on the delta. The XML task format still applies, but tasks like "create migration" and "create model" become "add command to existing module" or "fix search behavior." The TDD and verification steps apply equally — existing code doesn't mean less rigor.
 
 ## Reference Files
 

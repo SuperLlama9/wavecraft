@@ -159,6 +159,12 @@ Overwrite SESSION-LOG.md with the current state. Use all sections — every sect
 - Estimated context usage: [low/medium/high]
 - Quality assessment: [good/degrading/should-compact]
 - Recommendation: [continue/compact/new-session]
+
+## Integration Status
+- Last real stack test: [date/wave or "never"]
+- Database engine used in tests vs production: [e.g., SQLite tests / PostgreSQL production]
+- Known boundary gaps: [untested boundaries — e.g., "frontend API types not verified against real responses"]
+- Recommendation: [boot check needed / integration test needed / stack verified]
 ```
 
 ### Step 8: Append to DEV-LOG.md
@@ -210,6 +216,8 @@ Report to the user:
 - If there are untracked files: "Untracked files found: [files]. These won't be available to the next session unless committed."
 
 Do NOT auto-commit. Just report status and let the user decide.
+
+**Check for stale worktrees:** Look for `.claude/worktrees/` directories. If they exist, report them: "Found [N] worktree directories from parallel agent execution. If no uncommitted changes exist in them, consider cleaning up to free disk space." Do not auto-delete — let the user decide.
 
 ### Step 11: Confirm with User
 
